@@ -7,7 +7,7 @@ import { Team } from "../types";
  * @returns the total number of overs as a decimal
  */
 export const convertOversToDecimal = (overs: number, balls: number): number => {
-  return parseFloat((overs + balls / 6).toFixed(2));
+  return parseFloat((overs + balls /10 ).toFixed(2));
 };
 
 /**
