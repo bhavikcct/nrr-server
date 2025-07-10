@@ -26,6 +26,6 @@ Returns a JSON object with the following properties:
 
 ### Take a clone of this repository and start the project:
 
-1. Clone the repository using `git clone https://github.com/Bhavik567890/nrr-server.git`
+1. Clone the repository using `git clone https://github.com/bhavikcct/nrr-server.git`
 2. Install the dependencies using `npm install`
 3. Start the server using `npm  run serve`
