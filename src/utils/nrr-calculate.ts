@@ -7,8 +7,32 @@ import { Team } from "../types";
  * @returns the total number of overs as a decimal
  */
 export const convertOversToDecimal = (overs: number, balls: number): number => {
-  return parseFloat((overs + balls /10 ).toFixed(2));
+  return parseFloat((overs + balls / 10 ).toFixed(2));
 };
+ 
+/**
+ * Converts a number of balls into a decimal number of overs.
+ * @param balls the number of balls
+ * @returns the total number of overs as a decimal
+ */
+export function ballsToOversDecimal(balls: number): number {
+  const completeOvers = Math.floor(balls / 6);
+  const remainingBalls = balls % 6;
+  return convertOversToDecimal(completeOvers, remainingBalls);
+}
+
+/**
+ * Converts a number of balls into a number of overs and balls in a format
+ * suitable for display to users e.g. 12.3 for 12 overs and 3 balls.
+ * @param balls the number of balls
+ * @returns the total number of overs and balls as a number
+ */
+export function ballsToOversDisplay(balls: number): number {
+  const completeOvers = Math.floor(balls / 6);
+  const remainingBalls = balls % 6;
+  return parseFloat(`${completeOvers}.${remainingBalls}`);
+}
+
 
 /**
  * Parses a string representing a team's innings into its runs and overs.
@@ -39,22 +63,26 @@ const parseInnings = (innings: string): { runs: number; overs: number } => {
  * @param newAgainstOvers the number of overs faced by the opposition in the new match
  * @returns the team's revised NRR, rounded to 3 decimal places
  */
-export const calculateRevisedNRR = (
+export function calculateRevisedNRR(
   team: Team,
   newForRuns: number,
   newForOvers: number,
   newAgainstRuns: number,
   newAgainstOvers: number
-): number => {
+): number {
   const totalForRuns = team.forRuns + newForRuns;
   const totalForOvers = team.forOvers + newForOvers;
   const totalAgainstRuns = team.againstRuns + newAgainstRuns;
   const totalAgainstOvers = team.againstOvers + newAgainstOvers;
 
-  const nrr =
-    totalForRuns / totalForOvers - totalAgainstRuns / totalAgainstOvers;
-  return parseFloat(nrr.toFixed(3));
-};
+
+  if (totalForOvers <= 0 || totalAgainstOvers <= 0) {
+    throw new Error("Total overs must be greater than 0");
+  }
+
+  const nrr = totalForRuns / totalForOvers - totalAgainstRuns / totalAgainstOvers;
+  return parseFloat(nrr.toFixed(4));
+}
 
 /**
  * Returns an object containing the initial data for all teams in the league.
