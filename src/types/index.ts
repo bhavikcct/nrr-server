@@ -1,16 +1,21 @@
-export type Team = {
+
+
+export interface Overs {
+  overs: number;
+  balls: number;
+}
+export interface Team {
   name: string;
   matches: number;
   won: number;
   lost: number;
   nrr: number;
   forRuns: number;
-  forOvers: number;
+  forOvers: Overs; 
   againstRuns: number;
-  againstOvers: number;
+  againstOvers: Overs;
   points: number;
-};
-
+}
 export type MatchInput = {
   yourTeam: string;
   opponentTeam: string;

@@ -1,17 +1,21 @@
-import { Team } from "../types";
+import { Overs, Team } from "../types";
+
 
 /**
- * Converts a number of overs and balls into a decimal number of overs.
- * @param overs the number of full overs
- * @param balls the number of balls
+ * Converts either a number of overs or an object with an 'overs' property and optionally a 'balls' property into a decimal number of overs.
+ * @param overs the number of overs or an object with 'overs' and optionally 'balls' properties
+ * @param [balls] the number of balls if `overs` is a number
  * @returns the total number of overs as a decimal
  */
-export const convertOversToDecimal = (overs: number, balls: number): number => {
-  return parseFloat((overs + balls / 10 ).toFixed(2));
+export const convertOversToDecimal = (overs: number | Overs, balls?: number): number => {
+  if (typeof overs === 'number') {
+    return overs + (balls || 0) / 6;
+  }
+  return overs.overs + overs.balls / 6;
 };
- 
+
 /**
- * Converts a number of balls into a decimal number of overs.
+ * Converts a number of balls into a number of overs as a decimal.
  * @param balls the number of balls
  * @returns the total number of overs as a decimal
  */
@@ -57,11 +61,11 @@ const parseInnings = (innings: string): { runs: number; overs: number } => {
 /**
  * Calculates a team's revised NRR after a match.
  * @param team the team's current stats
- * @param newForRuns the number of runs scored by the team in the new match
- * @param newForOvers the number of overs faced by the team in the new match
- * @param newAgainstRuns the number of runs scored by the opposition in the new match
- * @param newAgainstOvers the number of overs faced by the opposition in the new match
- * @returns the team's revised NRR, rounded to 3 decimal places
+ * @param newForRuns the runs scored by the team in the match
+ * @param newForOvers the overs faced by the team in the match
+ * @param newAgainstRuns the runs scored against the team in the match
+ * @param newAgainstOvers the overs bowled by the team in the match
+ * @returns the revised NRR to 3 decimal places
  */
 export function calculateRevisedNRR(
   team: Team,
@@ -71,26 +75,33 @@ export function calculateRevisedNRR(
   newAgainstOvers: number
 ): number {
   const totalForRuns = team.forRuns + newForRuns;
-  const totalForOvers = team.forOvers + newForOvers;
+  const totalForOvers = convertOversToDecimal(team.forOvers) + newForOvers;
   const totalAgainstRuns = team.againstRuns + newAgainstRuns;
-  const totalAgainstOvers = team.againstOvers + newAgainstOvers;
+  const totalAgainstOvers = convertOversToDecimal(team.againstOvers) + newAgainstOvers;
 
+  console.log(totalForRuns, totalForOvers, totalAgainstRuns, totalAgainstOvers, 788);
 
   if (totalForOvers <= 0 || totalAgainstOvers <= 0) {
     throw new Error("Total overs must be greater than 0");
   }
 
   const nrr = totalForRuns / totalForOvers - totalAgainstRuns / totalAgainstOvers;
-  return parseFloat(nrr.toFixed(4));
+  console.log(totalForRuns / totalForOvers, totalAgainstRuns / totalAgainstOvers, 85);
+  console.log(nrr, 86);
+
+  return Math.trunc(nrr * 1000) / 1000;
 }
 
+
 /**
- * Returns an object containing the initial data for all teams in the league.
- * This data is used to calculate the Net Run Rate (NRR) for each team.
- * Each team is represented by a property with the team's name as the key and
- * an object containing the team's current stats as the value.
- * @returns an object containing the initial data for all teams in the league
+ * Provides the initial data for teams in the league, including their names,
+ * matches played, wins, losses, net run rate (NRR), runs scored, overs faced,
+ * runs conceded, overs bowled, and points. This data serves as a baseline for
+ * calculating the impact of future matches on team standings.
+ *
+ * @returns A record of team names mapped to their current statistics.
  */
+
 export const getInitialData = (): Record<string, Team> => ({
   "Chennai Super Kings": {
     name: "Chennai Super Kings",
@@ -99,9 +110,9 @@ export const getInitialData = (): Record<string, Team> => ({
     lost: 2,
     nrr: 0.771,
     forRuns: 1130,
-    forOvers: convertOversToDecimal(133, 1),
+    forOvers: { overs: 133, balls: 1 },
     againstRuns: 1071,
-    againstOvers: convertOversToDecimal(138, 5),
+    againstOvers: { overs: 138, balls: 5 },
     points: 10,
   },
   "Royal Challengers Bangalore": {
@@ -111,9 +122,9 @@ export const getInitialData = (): Record<string, Team> => ({
     lost: 3,
     nrr: 0.597,
     forRuns: 1217,
-    forOvers: convertOversToDecimal(140, 0),
+    forOvers: { overs: 140, balls: 0 },
     againstRuns: 1066,
-    againstOvers: convertOversToDecimal(131, 4),
+    againstOvers: { overs: 131, balls: 4 },
     points: 8,
   },
   "Delhi Capitals": {
@@ -123,9 +134,9 @@ export const getInitialData = (): Record<string, Team> => ({
     lost: 3,
     nrr: 0.319,
     forRuns: 1085,
-    forOvers: convertOversToDecimal(126, 0),
+    forOvers: { overs: 126, balls: 0 },
     againstRuns: 1136,
-    againstOvers: convertOversToDecimal(137, 0),
+    againstOvers: { overs: 137, balls: 0 },
     points: 8,
   },
   "Rajasthan Royals": {
@@ -135,9 +146,9 @@ export const getInitialData = (): Record<string, Team> => ({
     lost: 4,
     nrr: 0.331,
     forRuns: 1066,
-    forOvers: convertOversToDecimal(128, 2),
+    forOvers: { overs: 128, balls: 2 },
     againstRuns: 1094,
-    againstOvers: convertOversToDecimal(137, 1),
+    againstOvers: { overs: 137, balls: 1 },
     points: 6,
   },
   "Mumbai Indians": {
@@ -147,9 +158,9 @@ export const getInitialData = (): Record<string, Team> => ({
     lost: 6,
     nrr: -1.75,
     forRuns: 1003,
-    forOvers: convertOversToDecimal(155, 2),
+    forOvers: { overs: 155, balls: 2 },
     againstRuns: 1134,
-    againstOvers: convertOversToDecimal(138, 1),
+    againstOvers: { overs: 138, balls: 1 },
     points: 4,
   },
 });

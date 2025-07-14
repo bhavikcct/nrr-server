@@ -3,6 +3,7 @@ import {
   ballsToOversDecimal,
   ballsToOversDisplay,
   calculateRevisedNRR,
+  convertOversToDecimal,
   getInitialData,
 } from "../utils/nrr-calculate";
 
@@ -338,18 +339,21 @@ export class NRRService {
   }
 
   /**
-   * Computes the restrict runs for the opponent team based on the provided match data
-   * and desired NRR range. The opponent team must score within the given range to
-   * allow the your team to achieve the desired position.
-   *
-   * @param {Team} yourTeam - Your team's stats
-   * @param {Team} opponentTeam - Opponent team's stats
-   * @param {number} matchOvers - Number of overs available in the match
-   * @param {number} yourScore - Runs scored by your team
-   * @param {number} minRequiredNRR - Minimum NRR required to achieve the desired position
-   * @param {number} maxAllowedNRR - Maximum NRR allowed to achieve the desired position
-   * @returns {object} An object containing the restrict runs range, revised NRR range
-   *   and a boolean indicating whether the target NRR range is impossible to achieve
+   * Calculates the minimum and maximum runs that the opponent must make in order
+   * for your team to achieve the desired position in the league table.
+   * @param yourTeam The team that batted first.
+   * @param opponentTeam The team that batted second.
+   * @param matchOvers The number of overs in the match.
+   * @param yourScore The number of runs scored by your team.
+   * @param minRequiredNRR The minimum NRR required to achieve the desired position.
+   * @param maxAllowedNRR The maximum NRR allowed to achieve the desired position.
+   * @returns An object with the following properties:
+   * - restrictRunsMin: The minimum number of runs that the opponent must score.
+   * - restrictRunsMax: The maximum number of runs that the opponent must score.
+   * - revisedNRRMin: The minimum NRR that your team will have if the opponent scores the minimum number of runs.
+   * - revisedNRRMax: The maximum NRR that your team will have if the opponent scores the maximum number of runs.
+   * - impossible: A boolean indicating whether the desired NRR range is impossible to achieve.
+   * - message: A string describing the result.
    */
   private static computeRestrictOpponentRuns(
     yourTeam: Team,
@@ -374,17 +378,18 @@ export class NRRService {
       opponentRuns <= maxPossibleOpponentRuns;
       opponentRuns++
     ) {
-      const yourNRR = calculateRevisedNRR(
-        yourTeam,
-        yourScore,
-        matchOvers,
-        opponentRuns,
-        matchOvers
-      );
+      const totalForRuns = yourTeam?.forRuns + yourScore;
+      const totalForOvers =
+        convertOversToDecimal(yourTeam?.forOvers) + matchOvers;
+      const totalAgainstRuns = yourTeam.againstRuns + opponentRuns;
+      const totalAgainstOvers =
+        convertOversToDecimal(yourTeam?.againstOvers) + matchOvers;
+      const yourNRR =
+        totalForRuns / totalForOvers - totalAgainstRuns / totalAgainstOvers;
 
       if (
         yourNRR >= minRequiredNRR &&
-        (maxAllowedNRR === 999 || yourNRR <= maxAllowedNRR)
+        (maxAllowedNRR === 999 || yourNRR <= maxAllowedNRR + 0.000001)
       ) {
         if (restrictRunsMin === -1) {
           restrictRunsMin = opponentRuns;
@@ -410,7 +415,6 @@ export class NRRService {
         maxPossibleOpponentRuns,
         matchOvers
       );
-
       return {
         restrictRunsMin: 0,
         restrictRunsMax: maxPossibleOpponentRuns,
@@ -425,7 +429,6 @@ export class NRRService {
       };
     }
 
-    // Recalculate NRR at boundaries for precision
     validNRRMin = calculateRevisedNRR(
       yourTeam,
       yourScore,
@@ -441,29 +444,38 @@ export class NRRService {
       matchOvers
     );
 
+    console.log(
+      `Batting: restrictRunsMin=${restrictRunsMin}, restrictRunsMax=${restrictRunsMax}, revisedNRRMin=${validNRRMin}, revisedNRRMax=${validNRRMax}`
+    );
+
     return {
-      restrictRunsMin: restrictRunsMin,
-      restrictRunsMax: restrictRunsMax,
+      restrictRunsMin,
+      restrictRunsMax,
       revisedNRRMin: validNRRMin,
       revisedNRRMax: validNRRMax,
       impossible: false,
       message: `To achieve position, opponent must score between ${restrictRunsMin} and ${restrictRunsMax} runs`,
     };
   }
-  /**
-   * Computes the required overs to chase the target score and beat the required NRR range.
-   * If the target NRR range is impossible to achieve, returns the possible NRR range instead.
-   *
-   * @param {Team} yourTeam - Your team's stats
-   * @param {Team} opponentTeam - Opponent team's stats
-   * @param {number} matchOvers - Number of overs available in the match
-   * @param {number} targetScore - Target score to chase
-   * @param {number} minRequiredNRR - Minimum NRR required to achieve the desired position
-   * @param {number} maxAllowedNRR - Maximum NRR allowed to achieve the desired position
-   * @returns {object} An object containing the required overs range, revised NRR range
-   *   and a boolean indicating whether the target NRR range is impossible to achieve
-   */
 
+  /**
+   * Computes the overs in which your team must chase a target to achieve
+   * a desired NRR range.
+   *
+   * @param yourTeam - your team's stats
+   * @param opponentTeam - the opponent team's stats
+   * @param matchOvers - the number of overs in the match
+   * @param targetScore - the target score
+   * @param minRequiredNRR - the minimum NRR required to achieve the desired position
+   * @param maxAllowedNRR - the maximum NRR allowed to achieve the desired position
+   * @returns an object with the following properties:
+   *   - minOvers: the minimum number of overs in which the target must be chased
+   *   - maxOvers: the maximum number of overs in which the target must be chased
+   *   - revisedNRRMin: the minimum NRR that will be achieved if the target is chased in maxOvers
+   *   - revisedNRRMax: the maximum NRR that will be achieved if the target is chased in minOvers
+   *   - impossible: a boolean indicating whether the target NRR range can be achieved
+   *   - message: a string explaining the result
+   */
   private static computeChaseOversToBeatNRR(
     yourTeam: Team,
     opponentTeam: Team,
@@ -485,15 +497,17 @@ export class NRRService {
 
     const runRateAgainst =
       (yourTeam.againstRuns + targetScore) /
-      (yourTeam.againstOvers + matchOvers);
+      (convertOversToDecimal(yourTeam.againstOvers) + matchOvers);
     const totalForRuns = yourTeam.forRuns + yourScore;
 
     const maxOvers =
-      totalForRuns / (minRequiredNRR + runRateAgainst) - yourTeam.forOvers;
+      totalForRuns / (minRequiredNRR + runRateAgainst) -
+      convertOversToDecimal(yourTeam.forOvers);
     const minOvers =
       maxAllowedNRR === 999
         ? 0
-        : totalForRuns / (maxAllowedNRR + runRateAgainst) - yourTeam.forOvers;
+        : totalForRuns / (maxAllowedNRR + runRateAgainst) -
+          convertOversToDecimal(yourTeam.forOvers);
 
     let minBalls = Math.max(Math.ceil(minOvers * 6), minBallsRequired);
     let adjustedMaxBalls = Math.min(Math.floor(maxOvers * 6), maxBalls);
@@ -588,6 +602,10 @@ export class NRRService {
       ballsToOversDecimal(adjustedMinBalls),
       targetScore,
       matchOvers
+    );
+
+    console.log(
+      `Chasing: minBalls=${adjustedMinBalls}, maxBalls=${adjustedMaxBalls}, revisedNRRMin=${revisedNRRMin}, revisedNRRMax=${revisedNRRMax}`
     );
 
     let message = `Chase the target between ${preciseMinOvers} to ${preciseMaxOvers} overs to achieve the required NRR`;
