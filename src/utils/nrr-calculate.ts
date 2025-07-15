@@ -1,12 +1,6 @@
 import { Overs, Team } from "../types";
 
 
-/**
- * Converts either a number of overs or an object with an 'overs' property and optionally a 'balls' property into a decimal number of overs.
- * @param overs the number of overs or an object with 'overs' and optionally 'balls' properties
- * @param [balls] the number of balls if `overs` is a number
- * @returns the total number of overs as a decimal
- */
 export const convertOversToDecimal = (overs: number | Overs, balls?: number): number => {
   if (typeof overs === 'number') {
     return overs + (balls || 0) / 6;
@@ -14,23 +8,14 @@ export const convertOversToDecimal = (overs: number | Overs, balls?: number): nu
   return overs.overs + overs.balls / 6;
 };
 
-/**
- * Converts a number of balls into a number of overs as a decimal.
- * @param balls the number of balls
- * @returns the total number of overs as a decimal
- */
+
 export function ballsToOversDecimal(balls: number): number {
   const completeOvers = Math.floor(balls / 6);
   const remainingBalls = balls % 6;
   return convertOversToDecimal(completeOvers, remainingBalls);
 }
 
-/**
- * Converts a number of balls into a number of overs and balls in a format
- * suitable for display to users e.g. 12.3 for 12 overs and 3 balls.
- * @param balls the number of balls
- * @returns the total number of overs and balls as a number
- */
+
 export function ballsToOversDisplay(balls: number): number {
   const completeOvers = Math.floor(balls / 6);
   const remainingBalls = balls % 6;
@@ -38,12 +23,6 @@ export function ballsToOversDisplay(balls: number): number {
 }
 
 
-/**
- * Parses a string representing a team's innings into its runs and overs.
- * The string should be in the format "runs/wickets.overs.balls" e.g. "123/4.5.2"
- * @param innings the string to parse
- * @returns an object containing the runs and overs for the innings
- */
 const parseInnings = (innings: string): { runs: number; overs: number } => {
   const [runsStr, wickets] = innings.split("/");
   const oversAndBalls = wickets ? wickets.replace(/[a-zA-Z]/g, "") : "";
@@ -58,15 +37,7 @@ const parseInnings = (innings: string): { runs: number; overs: number } => {
   };
 };
 
-/**
- * Calculates a team's revised NRR after a match.
- * @param team the team's current stats
- * @param newForRuns the runs scored by the team in the match
- * @param newForOvers the overs faced by the team in the match
- * @param newAgainstRuns the runs scored against the team in the match
- * @param newAgainstOvers the overs bowled by the team in the match
- * @returns the revised NRR to 3 decimal places
- */
+
 export function calculateRevisedNRR(
   team: Team,
   newForRuns: number,
@@ -93,14 +64,7 @@ export function calculateRevisedNRR(
 }
 
 
-/**
- * Provides the initial data for teams in the league, including their names,
- * matches played, wins, losses, net run rate (NRR), runs scored, overs faced,
- * runs conceded, overs bowled, and points. This data serves as a baseline for
- * calculating the impact of future matches on team standings.
- *
- * @returns A record of team names mapped to their current statistics.
- */
+
 
 export const getInitialData = (): Record<string, Team> => ({
   "Chennai Super Kings": {

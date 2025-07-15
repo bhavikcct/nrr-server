@@ -8,24 +8,7 @@ import {
 } from "../utils/nrr-calculate";
 
 export class NRRService {
-  /**
-   * Handles an incoming request to calculate the impact of a match on a team's net run rate.
-   * The request body should contain the following properties:
-   * - yourTeam: The name of the team who batted first.
-   * - oppositionTeam: The name of the team who batted second.
-   * - matchOvers: The number of overs available in the match.
-   * - desiredPosition: The position in the league table that the team wants to achieve.
-   * - tossResult: The result of the toss. Should be either "bat" or "bowl".
-   * - runsScored: The number of runs scored by the team who batted first.
-   *
-   * The response will be an object with the following properties:
-   * - answer: An object with the following properties:
-   *   - restrictRunsMin: The minimum number of runs that the team who batted second must make.
-   *   - restrictRunsMax: The maximum number of runs that the team who batted second must make.
-   *   - revisedNRRMin: The minimum NRR that the team will have if the team who batted second makes the minimum number of runs.
-   *   - revisedNRRMax: The maximum NRR that the team will have if the team who batted second makes the maximum number of runs.
-   * - error: If there was an error with the request, this will contain the error message.
-   */
+
   static calculateMatchImpact(data: any): any {
     if (
       !data.yourTeam ||
@@ -152,19 +135,7 @@ export class NRRService {
     return result;
   }
 
-  /**
-   * Analyzes the feasibility of achieving a desired league position after a match.
-   *
-   * @param yourTeamAfterWin - The stats of your team after they win the match.
-   * @param opponentTeamAfterWin - The stats of the opponent team after they lose the match.
-   * @param allTeams - A record of all teams in the league and their current stats.
-   * @param desiredPosition - The position in the league table that your team wants to achieve.
-   * @param currentPosition - The current position of your team in the league table.
-   * @param yourTeamName - The name of your team.
-   * @param opponentTeamName - The name of the opponent team.
-   * @returns An object indicating whether the desired position is achievable, the reason if not achievable,
-   * and a list of teams with the same points as your team after the match.
-   */
+
 
   private static analyzePositionFeasibility(
     yourTeamAfterWin: Team,
@@ -222,19 +193,7 @@ export class NRRService {
       teamsWithSamePoints: teamsWithSamePointsAfterWin,
     };
   }
-  /**
-   * Calculates the required NRR range for your team to achieve a desired position in the league table.
-   * @param yourTeamAfterWin - Your team's stats after winning the match.
-   * @param opponentTeamAfterLoss - The opponent team's stats after losing the match.
-   * @param allTeams - All teams in the league with their current stats.
-   * @param desiredPosition - The desired position in the league table.
-   * @param yourTeamName - The name of your team.
-   * @param opponentTeamName - The name of the opponent team.
-   * @returns An object with two properties: minNRR and maxNRR. minNRR is the minimum NRR that your team
-   * needs to achieve to reach the desired position, and maxNRR is the maximum NRR that your team can
-   * have and still reach the desired position. If the desired position is not achievable, this function
-   * throws an error.
-   */
+
   private static calculateRequiredNRRRange(
     yourTeamAfterWin: Team,
     opponentTeamAfterLoss: Team,
@@ -338,23 +297,7 @@ export class NRRService {
     };
   }
 
-  /**
-   * Calculates the minimum and maximum runs that the opponent must make in order
-   * for your team to achieve the desired position in the league table.
-   * @param yourTeam The team that batted first.
-   * @param opponentTeam The team that batted second.
-   * @param matchOvers The number of overs in the match.
-   * @param yourScore The number of runs scored by your team.
-   * @param minRequiredNRR The minimum NRR required to achieve the desired position.
-   * @param maxAllowedNRR The maximum NRR allowed to achieve the desired position.
-   * @returns An object with the following properties:
-   * - restrictRunsMin: The minimum number of runs that the opponent must score.
-   * - restrictRunsMax: The maximum number of runs that the opponent must score.
-   * - revisedNRRMin: The minimum NRR that your team will have if the opponent scores the minimum number of runs.
-   * - revisedNRRMax: The maximum NRR that your team will have if the opponent scores the maximum number of runs.
-   * - impossible: A boolean indicating whether the desired NRR range is impossible to achieve.
-   * - message: A string describing the result.
-   */
+ 
   private static computeRestrictOpponentRuns(
     yourTeam: Team,
     opponentTeam: Team,
@@ -458,24 +401,7 @@ export class NRRService {
     };
   }
 
-  /**
-   * Computes the overs in which your team must chase a target to achieve
-   * a desired NRR range.
-   *
-   * @param yourTeam - your team's stats
-   * @param opponentTeam - the opponent team's stats
-   * @param matchOvers - the number of overs in the match
-   * @param targetScore - the target score
-   * @param minRequiredNRR - the minimum NRR required to achieve the desired position
-   * @param maxAllowedNRR - the maximum NRR allowed to achieve the desired position
-   * @returns an object with the following properties:
-   *   - minOvers: the minimum number of overs in which the target must be chased
-   *   - maxOvers: the maximum number of overs in which the target must be chased
-   *   - revisedNRRMin: the minimum NRR that will be achieved if the target is chased in maxOvers
-   *   - revisedNRRMax: the maximum NRR that will be achieved if the target is chased in minOvers
-   *   - impossible: a boolean indicating whether the target NRR range can be achieved
-   *   - message: a string explaining the result
-   */
+ 
   private static computeChaseOversToBeatNRR(
     yourTeam: Team,
     opponentTeam: Team,
