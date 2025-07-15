@@ -8,7 +8,6 @@ import {
 } from "../utils/nrr-calculate";
 
 export class NRRService {
-
   static calculateMatchImpact(data: any): any {
     if (
       !data.yourTeam ||
@@ -26,41 +25,73 @@ export class NRRService {
     if (data.tossResult !== "bat" && data.tossResult !== "bowl") {
       throw new Error("Toss result must be 'bat' or 'bowl'");
     }
-
+  
     const teams = getInitialData();
     const yourTeam = teams[data?.yourTeam];
     const opponentTeam = teams[data?.oppositionTeam];
-
+  
     if (!yourTeam || !opponentTeam) {
       throw new Error("Invalid team names.");
     }
-
+  
     const yourTeamAfterWin = {
       ...yourTeam,
       matches: yourTeam.matches + 1,
       won: yourTeam.won + 1,
       points: yourTeam.points + 2,
+      forRuns: yourTeam.forRuns + data.runsScored,
+      forOvers: {
+        overs: yourTeam.forOvers.overs + data.matchOvers,
+        balls: yourTeam.forOvers.balls 
+      }
     };
-
+  
     const opponentTeamAfterLoss = {
       ...opponentTeam,
       matches: opponentTeam.matches + 1,
       lost: opponentTeam.lost + 1,
+      againstRuns: opponentTeam.againstRuns + data.runsScored,
+      againstOvers: {
+        overs: opponentTeam.againstOvers.overs + data.matchOvers,
+        balls: opponentTeam.againstOvers.balls // Assuming no extra balls
+      }
     };
-
-    const sortedTeams = Object.values(teams).sort(
-      (a, b) => b.points - a.points || b.nrr - a.nrr
+  
+    yourTeamAfterWin.nrr = calculateRevisedNRR(
+      yourTeamAfterWin,
+      data.runsScored,
+      data.matchOvers,
+      opponentTeam.againstRuns,
+      opponentTeam.againstOvers.overs + opponentTeam.againstOvers.balls / 6
     );
-
+  
+    opponentTeamAfterLoss.nrr = calculateRevisedNRR(
+      opponentTeamAfterLoss,
+      0,
+      data.matchOvers,
+      data.runsScored,
+      data.matchOvers
+    );
+  
+    teams[data.yourTeam] = yourTeamAfterWin;
+    teams[data.oppositionTeam] = opponentTeamAfterLoss;
+  
+    const sortedTeams = Object.values(teams).sort((a, b) => {
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+      return b.nrr - a.nrr;
+    });
+  
     if (data.desiredPosition < 1 || data.desiredPosition > sortedTeams.length) {
       throw new Error(
         `Desired position must be between 1 and ${sortedTeams.length}.`
       );
     }
-
+  
     const currentPosition =
       sortedTeams.findIndex((team) => team.name === data.yourTeam) + 1;
-
+  
     const positionAnalysis = this.analyzePositionFeasibility(
       yourTeamAfterWin,
       opponentTeamAfterLoss,
@@ -70,11 +101,11 @@ export class NRRService {
       data.yourTeam,
       data.oppositionTeam
     );
-
+  
     if (!positionAnalysis.achievable) {
       throw new Error(positionAnalysis.reason);
     }
-
+  
     const nrrRange = this.calculateRequiredNRRRange(
       yourTeamAfterWin,
       opponentTeamAfterLoss,
@@ -83,11 +114,11 @@ export class NRRService {
       data.yourTeam,
       data.oppositionTeam
     );
-
+  
     const teamAtDesiredPosition = sortedTeams[data.desiredPosition - 1];
-
+  
     let result: any = {};
-
+  
     if (data.tossResult === "bat") {
       const target = data.runsScored;
       const restrictionRange = this.computeRestrictOpponentRuns(
@@ -98,7 +129,7 @@ export class NRRService {
         nrrRange.minNRR,
         nrrRange.maxNRR
       );
-
+  
       result = {
         mode: "bat",
         answer: restrictionRange,
@@ -119,7 +150,7 @@ export class NRRService {
         nrrRange.minNRR,
         nrrRange.maxNRR
       );
-
+  
       result = {
         mode: "bowl",
         answer: oversRange,
@@ -131,10 +162,10 @@ export class NRRService {
         positionAnalysis: positionAnalysis,
       };
     }
-
+  
     return result;
   }
-
+  
 
 
   private static analyzePositionFeasibility(
@@ -210,21 +241,21 @@ export class NRRService {
         }
         return team;
       });
-
+  
     const sortedOtherTeams = otherTeams.sort((a, b) => {
       if (b.points !== a.points) {
         return b.points - a.points;
       }
       return b.nrr - a.nrr;
     });
-
+  
     let minRequiredNRR = -999;
     let maxAllowedNRR = 999;
-
+  
     const teamsWithSamePoints = sortedOtherTeams.filter(
       (team) => team.points === yourTeamAfterWin.points
     );
-
+  
     if (teamsWithSamePoints.length === 0) {
       const teamsWithFewerPoints = sortedOtherTeams.filter(
         (team) => team.points < yourTeamAfterWin.points
@@ -233,9 +264,9 @@ export class NRRService {
         const highestNRRAmongLower = Math.max(
           ...teamsWithFewerPoints.map((t) => t.nrr)
         );
-        minRequiredNRR = highestNRRAmongLower + 0.001;
+        minRequiredNRR = highestNRRAmongLower + 0.001; // Ensure a slight margin
       } else {
-        minRequiredNRR = 0.001;
+        minRequiredNRR = 0.001; // Default minimum NRR
       }
     } else {
       const sortedSamePointTeams = teamsWithSamePoints.sort(
@@ -246,18 +277,17 @@ export class NRRService {
         (team) => team.points > yourTeamAfterWin.points
       ).length;
       const samePointTeamsAbove = teamsAbove - teamsWithMorePoints;
-
-      if (
-        samePointTeamsAbove > 0 &&
-        samePointTeamsAbove <= sortedSamePointTeams.length
-      ) {
+  
+      // Adjust maxAllowedNRR based on teams above
+      if (samePointTeamsAbove > 0 && samePointTeamsAbove <= sortedSamePointTeams.length) {
         const teamAboveUs = sortedSamePointTeams[samePointTeamsAbove - 1];
-        maxAllowedNRR = teamAboveUs.nrr - 0.001;
+        maxAllowedNRR = teamAboveUs.nrr - 0.001; // Ensure a slight margin
       }
-
+  
+      // Adjust minRequiredNRR based on teams below
       if (samePointTeamsAbove < sortedSamePointTeams.length) {
         const teamBelowUs = sortedSamePointTeams[samePointTeamsAbove];
-        minRequiredNRR = teamBelowUs.nrr + 0.001;
+        minRequiredNRR = teamBelowUs.nrr + 0.001; // Ensure a slight margin
       } else {
         const teamsWithFewerPoints = sortedOtherTeams.filter(
           (team) => team.points < yourTeamAfterWin.points
@@ -266,36 +296,41 @@ export class NRRService {
           const highestNRRAmongLower = Math.max(
             ...teamsWithFewerPoints.map((t) => t.nrr)
           );
-          minRequiredNRR = highestNRRAmongLower + 0.001;
+          minRequiredNRR = highestNRRAmongLower + 0.001; // Ensure a slight margin
         } else {
-          minRequiredNRR = 0.001;
+          minRequiredNRR = 0.001; // Default minimum NRR
         }
       }
     }
-
+  
+    // Special case for the top position
     if (desiredPosition === 1) {
-      maxAllowedNRR = 999;
+      maxAllowedNRR = 999; // No upper limit for the top position
     }
-
+  
+    // Ensure minRequiredNRR is valid
     if (minRequiredNRR === -999) {
-      minRequiredNRR = 0.001;
+      minRequiredNRR = 0.001; // Default minimum NRR
     }
-
+  
+    // Adjust maxAllowedNRR if needed
     if (maxAllowedNRR === 999 && desiredPosition > 1) {
-      maxAllowedNRR = sortedOtherTeams[desiredPosition - 2]?.nrr - 0.001 || 999;
+      maxAllowedNRR = sortedOtherTeams[desiredPosition - 2]?.nrr - 0.001 || 999; // Ensure a slight margin
     }
-
+  
+    // Validate the NRR range
     if (minRequiredNRR >= maxAllowedNRR && maxAllowedNRR !== 999) {
       throw new Error(
         `Cannot achieve position ${desiredPosition}. Required NRR range is invalid.`
       );
     }
-
+  
     return {
       minNRR: minRequiredNRR,
       maxNRR: maxAllowedNRR,
     };
   }
+  
 
  
   private static computeRestrictOpponentRuns(
@@ -309,27 +344,20 @@ export class NRRService {
     if (matchOvers <= 0 || yourScore < 0) {
       throw new Error("Match overs and runs scored must be non-negative");
     }
-
-    const maxPossibleOpponentRuns = yourScore - 1;
+  
+    const maxPossibleOpponentRuns = yourScore - 1; // RCB can score a maximum of one less than yourScore
     let restrictRunsMin = -1;
     let restrictRunsMax = -1;
     let validNRRMin = 999;
     let validNRRMax = -999;
-
-    for (
-      let opponentRuns = 0;
-      opponentRuns <= maxPossibleOpponentRuns;
-      opponentRuns++
-    ) {
-      const totalForRuns = yourTeam?.forRuns + yourScore;
-      const totalForOvers =
-        convertOversToDecimal(yourTeam?.forOvers) + matchOvers;
+  
+    for (let opponentRuns = 0; opponentRuns <= maxPossibleOpponentRuns; opponentRuns++) {
+      const totalForRuns = yourTeam.forRuns + yourScore;
+      const totalForOvers = convertOversToDecimal(yourTeam.forOvers) + matchOvers;
       const totalAgainstRuns = yourTeam.againstRuns + opponentRuns;
-      const totalAgainstOvers =
-        convertOversToDecimal(yourTeam?.againstOvers) + matchOvers;
-      const yourNRR =
-        totalForRuns / totalForOvers - totalAgainstRuns / totalAgainstOvers;
-
+      const totalAgainstOvers = convertOversToDecimal(yourTeam.againstOvers) + matchOvers;
+      const yourNRR = totalForRuns / totalForOvers - totalAgainstRuns / totalAgainstOvers;
+  
       if (
         yourNRR >= minRequiredNRR &&
         (maxAllowedNRR === 999 || yourNRR <= maxAllowedNRR + 0.000001)
@@ -342,8 +370,9 @@ export class NRRService {
         validNRRMax = Math.max(validNRRMax, yourNRR);
       }
     }
-
+  
     if (restrictRunsMin === -1) {
+      // If no valid runs found, calculate best and worst case NRR
       const bestCaseNRR = calculateRevisedNRR(
         yourTeam,
         yourScore,
@@ -371,7 +400,7 @@ export class NRRService {
         )}, ${bestCaseNRR.toFixed(3)}]`,
       };
     }
-
+  
     validNRRMin = calculateRevisedNRR(
       yourTeam,
       yourScore,
@@ -386,11 +415,7 @@ export class NRRService {
       restrictRunsMin,
       matchOvers
     );
-
-    console.log(
-      `Batting: restrictRunsMin=${restrictRunsMin}, restrictRunsMax=${restrictRunsMax}, revisedNRRMin=${validNRRMin}, revisedNRRMax=${validNRRMax}`
-    );
-
+  
     return {
       restrictRunsMin,
       restrictRunsMax,
@@ -400,6 +425,8 @@ export class NRRService {
       message: `To achieve position, opponent must score between ${restrictRunsMin} and ${restrictRunsMax} runs`,
     };
   }
+  
+  
 
  
   private static computeChaseOversToBeatNRR(
