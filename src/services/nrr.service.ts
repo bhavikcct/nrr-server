@@ -79,7 +79,7 @@ export class NRRService {
       againstRuns: opponentTeam.againstRuns + data.runsScored,
       againstOvers: {
         overs: opponentTeam.againstOvers.overs + data.matchOvers,
-        balls: opponentTeam.againstOvers.balls, // Assuming no extra balls
+        balls: opponentTeam.againstOvers.balls, 
       },
     };
 
@@ -140,7 +140,6 @@ export class NRRService {
       data.yourTeam,
       data.oppositionTeam
     );
-
     const teamAtDesiredPosition = sortedTeams[data.desiredPosition - 1];
 
     let result: any = {};
@@ -155,7 +154,6 @@ export class NRRService {
         nrrRange.minNRR,
         nrrRange.maxNRR
       );
-
       result = {
         mode: "bat",
         answer: restrictionRange,
@@ -310,9 +308,9 @@ export class NRRService {
         const highestNRRAmongLower = Math.max(
           ...teamsWithFewerPoints.map((t) => t.nrr)
         );
-        minRequiredNRR = highestNRRAmongLower + 0.001; // Ensure a slight margin
+        minRequiredNRR = highestNRRAmongLower + 0.001; 
       } else {
-        minRequiredNRR = 0.001; // Default minimum NRR
+        minRequiredNRR = -999; 
       }
     } else {
       const sortedSamePointTeams = teamsWithSamePoints.sort(
@@ -324,53 +322,38 @@ export class NRRService {
       ).length;
       const samePointTeamsAbove = teamsAbove - teamsWithMorePoints;
 
-      // Adjust maxAllowedNRR based on teams above
+    
       if (
         samePointTeamsAbove > 0 &&
         samePointTeamsAbove <= sortedSamePointTeams.length
       ) {
         const teamAboveUs = sortedSamePointTeams[samePointTeamsAbove - 1];
-        maxAllowedNRR = teamAboveUs.nrr - 0.001; // Ensure a slight margin
+        maxAllowedNRR = teamAboveUs.nrr - 0.001;
       }
 
-      // Adjust minRequiredNRR based on teams below
       if (samePointTeamsAbove < sortedSamePointTeams.length) {
         const teamBelowUs = sortedSamePointTeams[samePointTeamsAbove];
-        minRequiredNRR = teamBelowUs.nrr + 0.001; // Ensure a slight margin
+        minRequiredNRR = teamBelowUs.nrr + 0.001; 
       } else {
-        const teamsWithFewerPoints = sortedOtherTeams.filter(
-          (team) => team.points < yourTeamAfterWin.points
-        );
-        if (teamsWithFewerPoints.length > 0) {
-          const highestNRRAmongLower = Math.max(
-            ...teamsWithFewerPoints.map((t) => t.nrr)
-          );
-          minRequiredNRR = highestNRRAmongLower + 0.001; // Ensure a slight margin
-        } else {
-          minRequiredNRR = 0.001; // Default minimum NRR
-        }
+        minRequiredNRR = -999; 
       }
     }
 
-    // Special case for the top position
     if (desiredPosition === 1) {
-      maxAllowedNRR = 999; // No upper limit for the top position
+      maxAllowedNRR = 999;
     }
 
-    // Ensure minRequiredNRR is valid
     if (minRequiredNRR === -999) {
-      minRequiredNRR = 0.001; // Default minimum NRR
+      minRequiredNRR = -10; 
     }
 
-    // Adjust maxAllowedNRR if needed
     if (maxAllowedNRR === 999 && desiredPosition > 1) {
-      maxAllowedNRR = sortedOtherTeams[desiredPosition - 2]?.nrr - 0.001 || 999; // Ensure a slight margin
+      maxAllowedNRR = sortedOtherTeams[desiredPosition - 2]?.nrr - 0.001 || 999; 
     }
 
-    // Validate the NRR range
     if (minRequiredNRR >= maxAllowedNRR && maxAllowedNRR !== 999) {
       throw new Error(
-        `Cannot achieve position ${desiredPosition}. Required NRR range is invalid.`
+        `Cannot achieve position ${desiredPosition}. Required NRR range is invalid: min=${minRequiredNRR.toFixed(3)}, max=${maxAllowedNRR.toFixed(3)}`
       );
     }
 
@@ -408,7 +391,7 @@ export class NRRService {
       throw new Error("Match overs and runs scored must be non-negative");
     }
 
-    const maxPossibleOpponentRuns = yourScore - 1; // RCB can score a maximum of one less than yourScore
+    const maxPossibleOpponentRuns = yourScore - 1; 
     let restrictRunsMin = -1;
     let restrictRunsMax = -1;
     let validNRRMin = 999;
@@ -442,7 +425,6 @@ export class NRRService {
     }
 
     if (restrictRunsMin === -1) {
-      // If no valid runs found, calculate best and worst case NRR
       const bestCaseNRR = calculateRevisedNRR(
         yourTeam,
         yourScore,
@@ -622,7 +604,10 @@ export class NRRService {
       adjustedMaxBalls--;
     }
 
+    console.log(adjustedMinBalls,545)
+
     const preciseMinOvers = ballsToOversDisplay(adjustedMinBalls);
+    console.log(preciseMinOvers,546)
     const preciseMaxOvers = ballsToOversDisplay(adjustedMaxBalls);
 
     const revisedNRRMin = calculateRevisedNRR(
